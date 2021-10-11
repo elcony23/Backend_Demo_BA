@@ -1,0 +1,62 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+# NOTE: update this with your service name
+service: demo_ba
+
+# Enable auto-packing of external modules
+custom:
+    webpack:
+        webpackConfig: 'webpack.config.old.js'
+        includeModules: true
+    default_stage: development
+    stage: ${opt:stage, self:custom.default_stage}
+    env: file(./serverless.env.yml):${self:custom.stage}
+    # alerts:
+    #   stages:
+    #     - ${opt:stage, self:custom.default_stage}
+    #   topics:
+    #     alarm: ${file(./serverless.env.yml):${opt:stage, self:custom.default_stage}.CUSTOM_ERROR_SNS_TOPIC_ARN}
+    #   alarms:
+    #     - functionInvocations
+    #     - functionErrors
+    #     - functionThrottles
+    #   (5/23/2017) CloudFormation does not support changing the base path from empty to something or vice a versa. You must run sls remove to remove the base path mapping.
+    customDomain:
+        certificateName: ${file(./serverless.env.yml):${opt:stage, self:custom.default_stage}.CERTIFICATE_NAME}
+        domainName: ${file(./serverless.env.yml):${opt:stage, self:custom.default_stage}.DOMAIN_NAME}
+        basePath: ${${self:custom.env}.SERVICE_DOMAIN_BASE_PATH}
+        stage: ${self:custom.stage}
+        createRoute53Record: true
+
+plugins:
+    - serverless-webpack
+    - serverless-offline
+    - serverless-domain-manager
+    - serverless-plugin-split-stacks
+
+provider:
+    name: aws
+    runtime: nodejs14.x
+    stage: ${opt:stage, self:custom.default_stage}
+    profile: ${file(./serverless.env.yml):${opt:stage, self:custom.default_stage}.AWS_PROFILE}
+    environment: ${file(./serverless.env.yml):${opt:stage, self:custom.default_stage}}
+    region: us-east-1
+    role: ${file(./serverless.env.yml):${opt:stage, self:custom.default_stage}.PROVIDER_ROLE_ARN}
+    vpc: # Optional VPC. But if you use VPC then both subproperties (securityGroupIds and subnetIds) are required
+        securityGroupIds:
+            - ${file(./serverless.env.yml):${opt:stage, self:custom.default_stage}.SGID} # SG that grants acces to RDS (under our default VPC).
+        subnetIds: # Subnets that redirect outgoing traffic through the NAT configured for these private subnets (under our default VPC).
+            - ${file(./serverless.env.yml):${opt:stage, self:custom.default_stage}.SUBNETID}
+            - ${file(./serverless.env.yml):${opt:stage, self:custom.default_stage}.SUBNETID1}
+

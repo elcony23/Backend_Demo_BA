@@ -1,0 +1,104 @@
+service: products
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  stage: ${opt:stage, self:custom.default_stage}
+  profile: ${file(../serverless.env.yml):${opt:stage, self:custom.default_stage}.AWS_PROFILE}
+  environment: ${file(../serverless.env.yml):${opt:stage, self:custom.default_stage}}
+  region: us-east-1
+  role: ${file(../serverless.env.yml):${opt:stage, self:custom.default_stage}.PROVIDER_ROLE_ARN}
+  vpc: # Optional VPC. But if you use VPC then both subproperties (securityGroupIds and subnetIds) are required
+    securityGroupIds:
+      - ${file(../serverless.env.yml):${opt:stage, self:custom.default_stage}.SECURITY_GROUP_ID}
+    subnetIds: # Subnets that redirect outgoing traffic through the NAT configured for these private subnets (under our default VPC).
+      - ${file(../serverless.env.yml):${opt:stage, self:custom.default_stage}.SUBNET_ID}
+      - ${file(../serverless.env.yml):${opt:stage, self:custom.default_stage}.SUBNET1_ID}
+
+plugins:
+  - serverless-webpack
+  - serverless-offline
+  - serverless-domain-manager
+
+custom:
+  env: file(../serverless.env.yml):${self:custom.stage}
+  webpack:
+    webpackConfig: '../webpack.config.js'
+    includeModules:
+      packagePath: '../package.json'
+  default_stage: development
+  stage: ${opt:stage, self:custom.default_stage}
+  domains:
+    production: ${file(../serverless.env.yml):${opt:stage, self:custom.default_stage}.PRODUCTION_URL}
+    development: ${file(../serverless.env.yml):${opt:stage, self:custom.default_stage}.DEVELOPMENT_URL}
+  customDomain:
+    basePath: "sports"
+    domainName: ${self:custom.domains.${self:custom.stage}}
+    stage: "${self:custom.stage}"
+    createRoute53Record: true
+  authorizer:
+    user:
+      arn: ${file(../serverless.env.yml):${opt:stage, self:custom.default_stage}.AUTHORIZER_ARN}
+      type: token
+      identitySource: method.request.header.Authorization
+      identityValidationExpression: .*
+      resultTtlInSeconds: 0
+
+functions:
+
+  getProducts:
+    handler: product.get
+    timeout: 30
+    events:
+      - http:
+          path: /
+          method: get
+          cors: true
+  createProduct:
+    handler: product.createproduct
+    timeout: 30
+    events:
+      - http:
+          path: create
+          method: post
+          cors: true
+  updateProduct:
+    handler: product.updateProduct
+    timeout: 30
+    events:
+      - http:
+          path: update
+          method: put
+          cors: true
+  deleteProduct:
+        handler: product.erase
+        timeout: 30
+        events:
+            - http:
+                path: /delete/{productId}
+                method: delete
+                cors: true
+  createInstallment:
+    handler: product.createInstallment
+    timeout: 30
+    events:
+      - http:
+          path: installment/create
+          method: post
+          cors: true
+  getInstallments:
+    handler: product.getInstallments
+    timeout: 30
+    events:
+      - http:
+          path: installments
+          method: get
+          cors: true
+  searchProduct:
+    handler: product.search
+    timeout: 30
+    events:
+      - http:
+          path: products/search
+          method: post
+          cors: true
